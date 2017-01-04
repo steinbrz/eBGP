@@ -97,7 +97,6 @@ class routing_table(object):
         self.neighbor_ids = {}
         self.routes = {}
         self.new_routes = []
-        #self.ordered_prefix_list = []
 
     ######################################################################
 
@@ -118,11 +117,6 @@ class routing_table(object):
 
         #if it does, append to current list of routes to prefix
         else:
-            #print("In else statement")
-            #print("Route is {} {}".format(route.prefix, route.stops))
-            #for r in self.routes[route.prefix]:
-                #print("Route in list: {} {}\n".format(r.prefix, r.stops))
-
             if route not in self.routes[route.prefix]:
                 #print(" route hasn't been added")
 
@@ -152,13 +146,6 @@ class routing_table(object):
                         if len(self.routes[key]) == 0:
                             del self.routes[key]
                             r_prefix = prefix_object(copy.deepcopy(route.prefix))
-
-                            # since no route to prefix, remove from ordered list
-                            #for rp in self.ordered_prefix_list:
-                                #if rp == r_prefix:
-                                    #self.ordered_prefix_list.remove(rp)
-                                    #self.ordered_prefix_list.sort()
-                                    #break
                         else:
                             self.routes[key].sort()
 
@@ -169,9 +156,6 @@ class routing_table(object):
     def remove_routes_from_neighbor(self, neighbor):
 
         return_routes = []
-        #print(self.routes)
-
-
         for key in self.routes:
 
             for r in self.routes[key]:
@@ -187,11 +171,6 @@ class routing_table(object):
             if len(self.routes[key]) == 0:
                 prefixes_to_delete.append(key)
                 r_prefix = prefix_object(key)
-                #for rp in self.ordered_prefix_list:
-                    #if rp == r_prefix:
-                        #self.ordered_prefix_list.remove(rp)
-                        #self.ordered_prefix_list.sort()
-                        #break
         # delete the prefixes we found
         for p in prefixes_to_delete:
             del self.routes[p]

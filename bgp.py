@@ -34,7 +34,6 @@ class BGP(object):
         self.socket.bind(('', int(port)))
         self.server_address = self.socket.getsockname()
         self.routing_table = routing_table()
-        #self.routing_table.add_connection_type(self.server_address, __LOCAL__)
         self.socket.listen(10)
         self.socket.setblocking(False)
         self.threads = []
@@ -53,7 +52,6 @@ class BGP(object):
 
         self.lock = threading.Lock()
 
-        #Conneciton thread handles incoming connecitons and update thread handles update communication
         self.connection_thread = threading.Thread(target = self.connection_handler)
         self.update_thread = threading.Thread(target = self.update_handler)
         self.threads.append(self.connection_thread)
@@ -125,8 +123,6 @@ class BGP(object):
     def send_update_on_connect(self, address):
         s = self.connections[address]
 
-
-        #print("Update on connect")
         for key in self.routing_table.routes:
             route_list = self.routing_table.routes[key]
             new_route = route_list[0]
@@ -139,9 +135,6 @@ class BGP(object):
 
             connection_type = self.connection_type[address]
 
-            #print(" Connected Addres: {}".format(address))
-            #print("Route is {}, type is {}".format(new_route.stops, origin_type))
-            #print("Connection type is {}".format(connection_type))
             forward_route = copy.deepcopy(new_route)
             forward_route.add_origin(self.id)
             forward_update = update()
@@ -151,16 +144,13 @@ class BGP(object):
 
             #export rules
             if origin_type == __LOCAL__:
-                #print("sending")
                 s.send(forward_update.packet)
             elif origin_type == __PROVIDER__ or origin_type == __PEER__:
                 if connection_type == __CUSTOMER__:
-                    #print("sending")
                     s.send(forward_update.packet)
                 else:
                     continue
             else:
-                #print("sending")
                 s.send(forward_update.packet)
 
 
@@ -230,9 +220,7 @@ class BGP(object):
                     new_update.decode(temp[:end_of_update])
                     self.read_buffer[address] = self.read_buffer[address][end_of_update + 1:]
                     new_route = new_update.route
-                    #print("Received route: {} {}, update type {}".format(new_route.prefix, new_route.stops, new_update.type))
 
-                    #print("Through ID {}".format(new_route.route_through_id(self.id)))
                     # if new route doesn't go through us already
                     if not new_route.route_through_id(self.id):
                         # if it is a withdraw, remove from route from routing table
@@ -241,25 +229,11 @@ class BGP(object):
                             original_best_route = self.routing_table.best_prefix_route(new_route.prefix)
                             self.routing_table.withdraw_route(new_update.route)
                             new_best_route = self.routing_table.best_prefix_route(new_route.prefix)
-
-                            #check if we need to advertise a new best route
-                            #if we don't have the prefix route, pass on to others
                             self.send_updates("W", new_route, address)
 
-                            #if new_best_route == None:
-                                #self.send_updates("W", new_route, address)
-                                #print("Withdraw, no more routes to prefix")
-                                #print("New best route {} {}".format(new_route.prefix, new_route.stops))
-                            #elif new_best_route == original_best_route:
-                                #print("Best Route is still the same")
-                                #continue
                             if new_best_route == original_best_route:
                                 continue
                             elif new_best_route != None:
-                                #print("Withdraw, new best route to prefix")
-                                #print("Old best route {} {}".format(original_best_route.prefix, original_best_route.stops))
-                                #print("New best route {} {}".format(new_best_route.prefix, new_best_route.stops))
-                                #self.send_updates("W", original_best_route, address)
                                 origin = new_best_route.origin
                                 origin_address = self.get_address_from_id(origin)
                                 self.send_updates("A", new_best_route, origin_address)
@@ -276,16 +250,10 @@ class BGP(object):
                             # if we received a new route that is better than our first best
                             # if we don't already have a route to that prefix, advertise new route
                             if original_best_route == None:
-                                #print("Advertise, new route is only route and best")
-                                #print("New best route {} {}".format(new_best_route.prefix, new_best_route.stops))
                                 self.send_updates("A", new_best_route, address)
                             elif new_best_route == original_best_route:
-                                #print("Best route is still the same")
                                 continue
                             else:
-                                #print("Advertise, new route is best route to prefix, withdraw old")
-                                #print("Old best route {} {}".format(original_best_route.prefix, original_best_route.stops))
-                                #print("New best route {} {}".format(new_best_route.prefix, new_best_route.stops))
                                 origin = original_best_route.origin
                                 origin_address = self.get_address_from_id(origin)
                                 self.send_updates("W", original_best_route, origin_address)
@@ -324,7 +292,6 @@ class BGP(object):
         for s in self.socket_list:
 
             if self.forwarding_filter( s, forward_route, rec_address):
-                #print("Sending route {} {}".format(forward_route.prefix, forward_route.stops))
                 s.send(forward_update.packet)
 
 
@@ -337,9 +304,6 @@ class BGP(object):
         forward_address = self.get_address(s)
         as_number = self.neighbor_ids[forward_address]
         forward_type = self.connection_type[forward_address]
-
-        #print(" Forward_address {}, type {}".format(forward_address, forward_type))
-        #print(" Rec_address {}, type {}".format(rec_address, forward_address))
 
         if rec_address == forward_address:
             return False
@@ -375,7 +339,6 @@ class BGP(object):
         decoded_ack = ack.decode()
         eou = decoded_ack.find("\n")
         as_number = decoded_ack[:eou]
-        #self.routing_table.add_neighbor_id(address, as_number)
         new_socket.setblocking(False)
 
 
@@ -388,7 +351,6 @@ class BGP(object):
         else:
             their_type = __PROVIDER__
 
-        #connected_address = new_socket.getpeername()
         self.connection_type[address] = their_type
         self.connections[address] = new_socket
         self.socket_list.append(new_socket)
@@ -421,9 +383,6 @@ class BGP(object):
                 if new_route.stops != w.stops:
                     advertise_routes.append(new_route)
 
-
-        #for a in advertise_routes:
-            #print("Advertise Route: {} {}".format(a.prefix, a.stops))
         # check we are connected to the adress specified, then disconnect and update neighbors
         if address in self.connections:
             self.lock.acquire()
@@ -508,7 +467,6 @@ class BGP(object):
             origin = original_best.origin
 
             if origin != None:
-                #print("Advertise Old best route {} {}".format(original_best.prefix, original_best.stops))
                 origin_address = self.get_address_from_id(origin)
                 self.send_updates("A", original_best, origin_address)
 
@@ -531,7 +489,6 @@ class BGP(object):
             for route in route_list[1]:
                 r_str = route.to_string()
                 print("{} {}".format(route.prefix, r_str))
-                #self.f.write("{} {}\n".format(route.prefix, r_str))
 
         del q
 
@@ -565,16 +522,13 @@ class BGP(object):
         for b in options:
             #self.f.write("{} {}\n".format(b.prefix, b.to_string()))
             check_prefix = prefix_object(b.prefix)
-            #print("Current best: {}, Check: {}".format(best_route.len, check_prefix.len))
             if check_prefix.len > best_prefix.len:
                 best_route = copy.deepcopy(b)
                 best_prefix = check_prefix
-                #print("New_best: {}".format(best_prefix.prefix))
         r_str = best_route.to_string()
         del options
 
         print("{} {}".format(best_route.prefix, r_str))
-        #self.f.write("Best route: {} {} for {} \n".format(best_route.prefix, r_str, ip))
 
 
 
@@ -637,8 +591,6 @@ if __name__ == "__main__":
             node_type = parameters[1]
             i = parameters[2].find(":")
             host = parameters[2][:i]
-            #host = "127.0.0.1"
-            #port = parameters[2]
             port = parameters[2][i + 1:]
 
             bgp.connect(node_type, host, port)
@@ -646,7 +598,6 @@ if __name__ == "__main__":
         elif parameters[0] == 'disconnect' and len(parameters) == 2:
 
             host, port = parameters[1].split(":")
-            #port = parameters[1]
             bgp.disconnect(host, port)
 
         elif parameters[0] == 'advertise' and len(parameters) == 2:
